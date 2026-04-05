@@ -40,15 +40,19 @@ jobs:
         cp ./source/DeathmatchAPI/bin/Release/net8.0/DeathmatchAPI.deps.json release/shared/DeathmatchAPI/
         cp ./source/DeathmatchAPI/bin/Release/net8.0/DeathmatchAPI.pdb release/shared/DeathmatchAPI/
         
-        # Copy dependencies
-        cp ./source/Deathmatch/bin/Release/net8.0/MySqlConnector.dll release/plugins/Deathmatch/
-        cp ./source/Deathmatch/bin/Release/net8.0/Newtonsoft.Json.dll release/plugins/Deathmatch/
+        # Copy dependencies if they exist
+        if [ -f "./source/Deathmatch/bin/Release/net8.0/MySqlConnector.dll" ]; then
+          cp ./source/Deathmatch/bin/Release/net8.0/MySqlConnector.dll release/plugins/Deathmatch/
+        fi
+        if [ -f "./source/Deathmatch/bin/Release/net8.0/Newtonsoft.Json.dll" ]; then
+          cp ./source/Deathmatch/bin/Release/net8.0/Newtonsoft.Json.dll release/plugins/Deathmatch/
+        fi
         
         # Copy language files
         cp ./source/Deathmatch/lang/*.json release/plugins/Deathmatch/lang/
         
         # Copy only mirage spawn file
-        cp ./Spawns\ Locations/de_mirage.json release/plugins/Deathmatch/spawns/
+        cp "./Spawns Locations/de_mirage.json" release/plugins/Deathmatch/spawns/
         
     - name: Create release zip
       run: |
