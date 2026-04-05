@@ -28,10 +28,27 @@ jobs:
       
     - name: Create release structure
       run: |
-        mkdir -p release/plugins
-        mkdir -p release/shared
-        cp ./source/Deathmatch/bin/Release/net8.0/Deathmatch.dll release/plugins/
-        cp ./source/DeathmatchAPI/bin/Release/net8.0/DeathmatchAPI.dll release/shared/
+        mkdir -p release/plugins/Deathmatch/lang
+        mkdir -p release/plugins/Deathmatch/spawns
+        mkdir -p release/shared/DeathmatchAPI
+        
+        # Copy DLL files
+        cp ./source/Deathmatch/bin/Release/net8.0/Deathmatch.dll release/plugins/Deathmatch/
+        cp ./source/Deathmatch/bin/Release/net8.0/Deathmatch.deps.json release/plugins/Deathmatch/
+        cp ./source/Deathmatch/bin/Release/net8.0/Deathmatch.pdb release/plugins/Deathmatch/
+        cp ./source/DeathmatchAPI/bin/Release/net8.0/DeathmatchAPI.dll release/shared/DeathmatchAPI/
+        cp ./source/DeathmatchAPI/bin/Release/net8.0/DeathmatchAPI.deps.json release/shared/DeathmatchAPI/
+        cp ./source/DeathmatchAPI/bin/Release/net8.0/DeathmatchAPI.pdb release/shared/DeathmatchAPI/
+        
+        # Copy dependencies
+        cp ./source/Deathmatch/bin/Release/net8.0/MySqlConnector.dll release/plugins/Deathmatch/
+        cp ./source/Deathmatch/bin/Release/net8.0/Newtonsoft.Json.dll release/plugins/Deathmatch/
+        
+        # Copy language files
+        cp ./source/Deathmatch/lang/*.json release/plugins/Deathmatch/lang/
+        
+        # Copy only mirage spawn file
+        cp ./Spawns\ Locations/de_mirage.json release/plugins/Deathmatch/spawns/
         
     - name: Create release zip
       run: |
