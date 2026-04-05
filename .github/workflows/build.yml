@@ -24,7 +24,7 @@ jobs:
       run: dotnet restore ./source/Deathmatch/Deathmatch.csproj
       
     - name: Build
-      run: dotnet build ./source/Deathmatch/Deathmatch.csproj --configuration Release --no-restore
+      run: dotnet publish ./source/Deathmatch/Deathmatch.csproj --configuration Release --no-restore --output ./publish
       
     - name: Create release structure
       run: |
@@ -32,21 +32,17 @@ jobs:
         mkdir -p release/plugins/Deathmatch/spawns
         mkdir -p release/shared/DeathmatchAPI
         
-        # Copy DLL files
-        cp ./source/Deathmatch/bin/Release/net8.0/Deathmatch.dll release/plugins/Deathmatch/
-        cp ./source/Deathmatch/bin/Release/net8.0/Deathmatch.deps.json release/plugins/Deathmatch/
-        cp ./source/Deathmatch/bin/Release/net8.0/Deathmatch.pdb release/plugins/Deathmatch/
+        # Copy DLL files from publish output (includes all dependencies)
+        cp ./publish/Deathmatch.dll release/plugins/Deathmatch/
+        cp ./publish/Deathmatch.deps.json release/plugins/Deathmatch/
+        cp ./publish/Deathmatch.pdb release/plugins/Deathmatch/
+        cp ./publish/MySqlConnector.dll release/plugins/Deathmatch/
+        cp ./publish/Newtonsoft.Json.dll release/plugins/Deathmatch/
+        
+        # Copy API files
         cp ./source/DeathmatchAPI/bin/Release/net8.0/DeathmatchAPI.dll release/shared/DeathmatchAPI/
         cp ./source/DeathmatchAPI/bin/Release/net8.0/DeathmatchAPI.deps.json release/shared/DeathmatchAPI/
         cp ./source/DeathmatchAPI/bin/Release/net8.0/DeathmatchAPI.pdb release/shared/DeathmatchAPI/
-        
-        # Copy dependencies if they exist
-        if [ -f "./source/Deathmatch/bin/Release/net8.0/MySqlConnector.dll" ]; then
-          cp ./source/Deathmatch/bin/Release/net8.0/MySqlConnector.dll release/plugins/Deathmatch/
-        fi
-        if [ -f "./source/Deathmatch/bin/Release/net8.0/Newtonsoft.Json.dll" ]; then
-          cp ./source/Deathmatch/bin/Release/net8.0/Newtonsoft.Json.dll release/plugins/Deathmatch/
-        fi
         
         # Copy language files
         cp ./Lang/*.json release/plugins/Deathmatch/lang/
