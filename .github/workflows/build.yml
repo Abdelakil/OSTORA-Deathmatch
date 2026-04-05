@@ -26,14 +26,23 @@ jobs:
     - name: Build
       run: dotnet build ./source/Deathmatch/Deathmatch.csproj --configuration Release --no-restore
       
-    - name: Pack
-      run: dotnet pack ./source/Deathmatch/Deathmatch.csproj --configuration Release --no-build --output ./artifacts
-      
+    - name: Create release structure
+      run: |
+        mkdir -p release/plugins
+        mkdir -p release/shared
+        cp ./source/Deathmatch/bin/Release/net8.0/Deathmatch.dll release/plugins/
+        cp ./source/DeathmatchAPI/bin/Release/net8.0/DeathmatchAPI.dll release/shared/
+        
+    - name: Create release zip
+      run: |
+        cd release
+        zip -r ../OSTORA-Deathmatch.zip .
+        
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
         name: deathmatch-plugin
-        path: ./artifacts/*.nupkg
+        path: OSTORA-Deathmatch.zip
         
     - name: Get version
       id: version
@@ -55,8 +64,8 @@ jobs:
           - Optimized spawn selection
           
           ### Installation
-          1. Download `Deathmatch.dll` from the assets below
-          2. Place in your CS2 server's `addons/counterstrikesharp/plugins` folder
+          1. Download `OSTORA-Deathmatch.zip` from the assets below
+          2. Extract to your CS2 server's `addons/counterstrikesharp/` directory
           3. Restart your server or reload the plugin
           
           ### Configuration
@@ -64,8 +73,7 @@ jobs:
           - Configure `minPlayers` and `maxPlayers` for each spawn point
           
         files: |
-          ./source/Deathmatch/bin/Release/net8.0/Deathmatch.dll
-          ./source/DeathmatchAPI/bin/Release/net8.0/DeathmatchAPI.dll
+          OSTORA-Deathmatch.zip
         draft: false
         prerelease: false
       env:
