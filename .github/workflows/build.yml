@@ -11,12 +11,12 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: recursive
         
     - name: Setup .NET
-      uses: actions/setup-dotnet@v3
+      uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 8.0.x
         
@@ -30,7 +30,7 @@ jobs:
       run: dotnet pack --configuration Release --no-build --output ./artifacts
       
     - name: Upload artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: deathmatch-plugin
         path: ./artifacts/*.nupkg
@@ -41,7 +41,7 @@ jobs:
       
     - name: Create Release
       if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
         name: Deathmatch Plugin v${{ steps.version.outputs.VERSION }}
         tag_name: v${{ steps.version.outputs.VERSION }}
