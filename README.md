@@ -1,3 +1,5 @@
+# OSTORA Deathmatch Plugin
+
 <p align="center">
 <b>Deathmatch + MutliCFG</b> plugin is a game mode where players respawn immediately after being killed, allowing them to practice shooting and movement without the typical match constraints. MutliCFG allows you to set up special modes that change the gameplay to different types such as Only Pistols, Only AWP, Rifles, etc.
 Use gamemodes like <b>Custom</b> , <b>Casual</b> or <b>Deathmatch</b> for the plugin to work properly.<br>
@@ -7,6 +9,30 @@ Designed for <a href="https://github.com/roflmuffin/CounterStrikeSharp">CounterS
 <img src="https://img.buymeacoffee.com/button-api/?text=Support%20Me&emoji=%F0%9F%9A%80&slug=sourcefactory&button_colour=e6005c&font_colour=ffffff&font_family=Lato&outline_colour=000000&coffee_colour=FFDD00" />
 </a>
 </p>
+
+## 🆕 **New Features in This Fork**
+
+### **MaxPlayers Spawn Configuration**
+- **Dynamic spawn selection** based on current player count
+- **Optimized gameplay** for different server sizes
+- **Smart spawn filtering** to prevent overcrowding
+
+#### **How it works:**
+```json
+{
+  "team": "t",
+  "pos": "1332.40 492.02 -259.52",
+  "angle": "0.00 -134.95 0.00",
+  "minPlayers": 1,
+  "maxPlayers": 10
+}
+```
+
+#### **Perfect for:**
+- **1-9 players**: Small server experience (30 spawns available)
+- **10-32 players**: Full map experience (63 spawns available)
+
+---
 
 ## [Documentation/Wiki](https://docs.sourcefactory.eu/cs2-plugins/deathmatch)
 ### Discord Support Server

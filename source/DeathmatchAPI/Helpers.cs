@@ -23,4 +23,6 @@ public class SpawnData
     public required CsTeam Team { get; set; }
     public required Vector Position { get; set; }
     public required QAngle Angle { get; set; }
+    public int? MinPlayers { get; set; }
+    public int? MaxPlayers { get; set; }
 }

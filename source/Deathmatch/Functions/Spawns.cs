@@ -6,6 +6,8 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using CounterStrikeSharp.API.Modules.Utils;
 using System.Globalization;
+using System.Linq;
+using System.Collections.Generic;
 using static DeathmatchAPI.Events.IDeathmatchEventsAPI;
 using DeathmatchAPI.Helpers;
 
@@ -13,19 +15,52 @@ namespace Deathmatch
 {
     public partial class Deathmatch
     {
+        public int GetCurrentPlayerCount()
+        {
+            return Utilities.GetPlayers().Count(p => !p.IsHLTV && p.LifeState == (byte)LifeState_t.LIFE_ALIVE);
+        }
+
+        public bool IsSpawnValidForPlayerCount(SpawnData spawn)
+        {
+            int currentPlayers = GetCurrentPlayerCount();
+            
+            if (spawn.MinPlayers.HasValue && currentPlayers < spawn.MinPlayers.Value)
+                return false;
+                
+            if (spawn.MaxPlayers.HasValue && currentPlayers > spawn.MaxPlayers.Value)
+                return false;
+            
+            return true;
+        }
+
         public void PerformRespawn(CCSPlayerController player, CsTeam team)
         {
             if (team == CsTeam.None || team == CsTeam.Spectator)
                 return;
 
-            //IEnumerable<KeyValuePair<Vector, QAngle>> spawnsDictionary = Config.SpawnSystem.TeamSpawnsSeparation
-            //    ? (team == CsTeam.Terrorist ? spawnPositionsT : spawnPositionsCT)
-            //    : spawnPositionsT.Concat(spawnPositionsCT);
+            int currentPlayers = GetCurrentPlayerCount();
+            
+            // Log all alive players' positions
+            var alivePlayers = Utilities.GetPlayers().Where(p => !p.IsHLTV && p.LifeState == (byte)LifeState_t.LIFE_ALIVE);
+            SendConsoleMessage($"[Deathmatch] Current player count: {currentPlayers} | Respawning {player.PlayerName}", ConsoleColor.Cyan);
+            
+            foreach (var alivePlayer in alivePlayers)
+            {
+                var pos = alivePlayer.PlayerPawn.Value?.AbsOrigin;
+                if (pos != null)
+                {
+                    SendConsoleMessage($"[PLAYER POS] {alivePlayer.PlayerName} ({alivePlayer.TeamNum}): ({pos.X:F1}, {pos.Y:F1}, {pos.Z:F1})", ConsoleColor.White);
+                }
+            }
 
-            IEnumerable<KeyValuePair<Vector, QAngle>> spawnsDictionary = Config.SpawnSystem.TeamSpawnsSeparation
-                ? spawnPoints.Where(spawn => spawn.Team == team)
-                            .Select(spawn => new KeyValuePair<Vector, QAngle>(spawn.Position, spawn.Angle))
-                : spawnPoints.Select(spawn => new KeyValuePair<Vector, QAngle>(spawn.Position, spawn.Angle));
+            IEnumerable<SpawnData> filteredSpawns = Config.SpawnSystem.TeamSpawnsSeparation
+                ? spawnPoints.Where(spawn => spawn.Team == team && IsSpawnValidForPlayerCount(spawn))
+                : spawnPoints.Where(spawn => IsSpawnValidForPlayerCount(spawn));
+
+            IEnumerable<KeyValuePair<Vector, QAngle>> spawnsDictionary = filteredSpawns
+                .Select(spawn => new KeyValuePair<Vector, QAngle>(spawn.Position, spawn.Angle));
+
+            SendConsoleMessage($"[Deathmatch] Available spawns after player count filtering: {spawnsDictionary.Count()}/{spawnPoints.Count}", ConsoleColor.Yellow);
 
             if (blockedSpawns.TryGetValue(player.Slot, out var lastSpawn))
             {
@@ -43,6 +78,7 @@ namespace Deathmatch
             if (selectedSpawn.HasValue)
             {
                 blockedSpawns[player.Slot] = selectedSpawn.Value.Key;
+                SendConsoleMessage($"[SPAWN SELECTED] {player.PlayerName} -> ({selectedSpawn.Value.Key.X:F1}, {selectedSpawn.Value.Key.Y:F1}, {selectedSpawn.Value.Key.Z:F1})", ConsoleColor.Green);
                 player.Pawn.Value?.Teleport(selectedSpawn.Value.Key, selectedSpawn.Value.Value, null);
             }
         }
@@ -62,41 +98,27 @@ namespace Deathmatch
                 shuffledSpawns[j] = temp;
             }
 
+            SendConsoleMessage($"[SPAWN DEBUG] Checking {shuffledSpawns.Count} spawns for {player.PlayerName}, min distance: {CheckedEnemiesDistance}", ConsoleColor.Yellow);
+
             foreach (var spawn in shuffledSpawns)
             {
                 bool isValidSpawn = true;
+                double closestDistance = double.MaxValue;
+                
                 foreach (var pawn in playerPawns)
                 {
                     var distance = GetDistance(pawn?.AbsOrigin, spawn.Key);
+                    closestDistance = Math.Min(closestDistance, distance);
+                    
                     if (distance < CheckedEnemiesDistance)
                     {
                         isValidSpawn = false;
                         break;
                     }
-
-                    /*if (CheckedEnemiesDistance >= 100)
-                    {
-                        if (distance < CheckedEnemiesDistance)
-                        {
-                            isValidSpawn = false;
-                            break;
-                        }
-
-                        if (CheckSpawnVisibility && distance <= 3000 && CanSeeSpawn(pawn, spawn.Key))
-                        {
-                            isValidSpawn = false;
-                            break;
-                        }
-                    }
-                    else
-                    {
-                        if (distance < 67 && CanSeeSpawn(pawn, spawn.Key))
-                        {
-                            isValidSpawn = false;
-                            break;
-                        }
-                    }*/
                 }
+
+                SendConsoleMessage($"[SPAWN CHECK] Pos({spawn.Key.X:F1}, {spawn.Key.Y:F1}) - Closest enemy: {closestDistance:F1}m, Valid: {isValidSpawn}", 
+                    isValidSpawn ? ConsoleColor.Green : ConsoleColor.Red);
 
                 if (isValidSpawn)
                     return spawn;
@@ -124,7 +146,9 @@ namespace Deathmatch
                 {
                     team = spawnData.Team == CsTeam.Terrorist ? "t" : "ct",
                     pos = $"{FormatValue(spawnData.Position.X)} {FormatValue(spawnData.Position.Y)} {FormatValue(spawnData.Position.Z)}",
-                    angle = $"{FormatValue(spawnData.Angle.X)} {FormatValue(spawnData.Angle.Y)} {FormatValue(spawnData.Angle.Z)}"
+                    angle = $"{FormatValue(spawnData.Angle.X)} {FormatValue(spawnData.Angle.Y)} {FormatValue(spawnData.Angle.Z)}",
+                    minPlayers = spawnData.MinPlayers,
+                    maxPlayers = spawnData.MaxPlayers
                 };
                 spawnpointsWrapper.spawnpoints.Add(data);
             }
@@ -297,6 +321,7 @@ namespace Deathmatch
         public void LoadMapSpawns(string filePath)
         {
             spawnPoints.Clear();
+            
             if (Config.SpawnSystem.SpawnsMethod >= 1)
             {
                 addDefaultSpawnsToList();
@@ -305,13 +330,13 @@ namespace Deathmatch
             {
                 if (!File.Exists(filePath))
                 {
-                    SendConsoleMessage($"[Deathmatch] No spawn points found for this map! (Deathmatch/spawns/{Server.MapName}.json)", ConsoleColor.Red);
+                    SendConsoleMessage($"[Deathmatch] No custom spawn file found: {filePath}", ConsoleColor.Red);
                     addDefaultSpawnsToList();
                 }
                 else
                 {
                     DisableDefaultSpawns();
-                    SendConsoleMessage($"[Deathmatch] Loading Custom Map Spawns..", ConsoleColor.DarkYellow);
+                    SendConsoleMessage($"[Deathmatch] Loading custom spawns from: {filePath}", ConsoleColor.Green);
 
                     var jsonContent = File.ReadAllText(filePath);
                     JObject jsonData = JsonConvert.DeserializeObject<JObject>(jsonContent)!;
@@ -322,31 +347,43 @@ namespace Deathmatch
                         var pos = ParseVector(teamData["pos"]!.ToString());
                         var angle = ParseQAngle(teamData["angle"]!.ToString());
 
+                        // Parse optional MinPlayers and MaxPlayers
+                        int? minPlayers = null;
+                        int? maxPlayers = null;
+                        
+                        if (teamData["minPlayers"] != null && int.TryParse(teamData["minPlayers"]!.ToString(), out int minVal))
+                            minPlayers = minVal;
+                            
+                        if (teamData["maxPlayers"] != null && int.TryParse(teamData["maxPlayers"]!.ToString(), out int maxVal))
+                            maxPlayers = maxVal;
+
                         var spawn = new SpawnData()
                         {
                             Team = team,
                             Position = pos,
                             Angle = angle,
+                            MinPlayers = minPlayers,
+                            MaxPlayers = maxPlayers
                         };
 
                         spawnPoints.Add(spawn);
                         CreateSpawnEntity(pos, angle, team);
                     }
 
-                    SendConsoleMessage($"[Deathmatch] Total Loaded Custom Spawns: CT {spawnPoints.Count(x => x.Team == CsTeam.CounterTerrorist)} | T {spawnPoints.Count(x => x.Team == CsTeam.Terrorist)}", ConsoleColor.Green);
+                    SendConsoleMessage($"[Deathmatch] Total spawns loaded: {spawnPoints.Count} (CT: {spawnPoints.Count(x => x.Team == CsTeam.CounterTerrorist)}, T: {spawnPoints.Count(x => x.Team == CsTeam.Terrorist)})", ConsoleColor.Green);
                 }
             }
-
+            
             Server.NextFrame(() =>
             {
                 DeathmatchAPI.Get()?.TriggerEvent(new OnSpawnPointsLoaded(spawnPoints));
             });
         }
 
-        private static Vector ParseVector(string pos)
+        private static Vector ParseVector(string vector)
         {
-            pos = pos.Replace(",", "");
-            var values = pos.Split(' ');
+            vector = vector.Replace(",", "");
+            var values = vector.Split(' ');
             if (values.Length == 3 &&
                 float.TryParse(values[0], NumberStyles.Float, CultureInfo.InvariantCulture, out float x) &&
                 float.TryParse(values[1], NumberStyles.Float, CultureInfo.InvariantCulture, out float y) &&

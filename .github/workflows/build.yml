@@ -1,0 +1,72 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: recursive
+        
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: 8.0.x
+        
+    - name: Restore dependencies
+      run: dotnet restore
+      
+    - name: Build
+      run: dotnet build --configuration Release --no-restore
+      
+    - name: Pack
+      run: dotnet pack --configuration Release --no-build --output ./artifacts
+      
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: deathmatch-plugin
+        path: ./artifacts/*.nupkg
+        
+    - name: Get version
+      id: version
+      run: echo "VERSION=$(date +'%Y.%m.%d')" >> $GITHUB_OUTPUT
+      
+    - name: Create Release
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      uses: softprops/action-gh-release@v1
+      with:
+        name: Deathmatch Plugin v${{ steps.version.outputs.VERSION }}
+        tag_name: v${{ steps.version.outputs.VERSION }}
+        body: |
+          ## Deathmatch Plugin v${{ steps.version.outputs.VERSION }}
+          
+          ### Features
+          - MaxPlayers spawn configuration
+          - Player count-based spawn filtering
+          - Enhanced logging system
+          - Optimized spawn selection
+          
+          ### Installation
+          1. Download `Deathmatch.dll` from the assets below
+          2. Place in your CS2 server's `addons/counterstrikesharp/plugins` folder
+          3. Restart your server or reload the plugin
+          
+          ### Configuration
+          - Spawn files are located in `addons/counterstrikesharp/plugins/Deathmatch/spawns/`
+          - Configure `minPlayers` and `maxPlayers` for each spawn point
+          
+        files: |
+          ./source/Deathmatch/bin/Release/net8.0/Deathmatch.dll
+          ./source/DeathmatchAPI/bin/Release/net8.0/DeathmatchAPI.dll
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
