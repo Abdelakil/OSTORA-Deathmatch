@@ -49,7 +49,7 @@ jobs:
         fi
         
         # Copy language files
-        cp ./source/Deathmatch/lang/*.json release/plugins/Deathmatch/lang/
+        cp ./Lang/*.json release/plugins/Deathmatch/lang/
         
         # Copy only mirage spawn file
         cp "./Spawns Locations/de_mirage.json" release/plugins/Deathmatch/spawns/
